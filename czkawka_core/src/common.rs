@@ -730,7 +730,7 @@ pub fn make_hard_link_windows_cmd(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }   
 
-#[cfg(windows)]
+#[cfg(target_family = "windows")]
 pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
     let dst_dir = dst.parent().ok_or_else(|| Error::other("No parent"))?;
     let temp = dst_dir.join(TEMP_HARDLINK_FILE);
@@ -747,7 +747,7 @@ pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 
-#[cfg(not(windows))]
+#[cfg(target_family = "unix")]
 pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
     let dst_dir = dst.parent().ok_or_else(|| Error::other("No parent"))?;
     let temp = dst_dir.join(TEMP_HARDLINK_FILE);
