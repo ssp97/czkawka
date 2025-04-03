@@ -735,12 +735,9 @@ pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
     let dst_dir = dst.parent().ok_or_else(|| Error::other("No parent"))?;
     let temp = dst_dir.join(TEMP_HARDLINK_FILE);
     fs::rename(dst, temp.as_path())?;
-    let mut result = fs::hard_link(src, dst);
+    let mut result = make_hard_link_windows(src, dst);
     if result.is_err() {
-        result = make_hard_link_windows_cmd(src, dst);
-        if result.is_err() {
-            fs::rename(temp.as_path(), dst)?;
-        }
+        fs::rename(temp.as_path(), dst)?;
     }
     fs::remove_file(temp)?;
     result
