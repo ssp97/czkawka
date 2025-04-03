@@ -8,6 +8,7 @@ use std::sync::{Arc, atomic};
 use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use std::{fs, io, thread};
+use std::process::Command;
 
 use crossbeam_channel::Sender;
 use directories_next::ProjectDirs;
@@ -716,6 +717,37 @@ pub fn check_if_stop_received(stop_flag: Option<&Arc<AtomicBool>>) -> bool {
     false
 }
 
+pub fn make_hard_link_windows_cmd(src: &Path, dst: &Path) -> io::Result<()> {
+    let status = Command::new("cmd")
+        .args(&["/C", "mklink", "/H", dst.to_str().unwrap(), src.to_str().unwrap()])
+        .status()?;
+    if !status.success() {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("Failed to create hard link: {}", status),
+        ));
+    }
+    Ok(())
+}   
+
+#[cfg(windows)]
+pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
+    let dst_dir = dst.parent().ok_or_else(|| Error::other("No parent"))?;
+    let temp = dst_dir.join(TEMP_HARDLINK_FILE);
+    fs::rename(dst, temp.as_path())?;
+    let mut result = fs::hard_link(src, dst);
+    if result.is_err() {
+        result = make_hard_link_windows_cmd(src, dst);
+        if result.is_err() {
+            fs::rename(temp.as_path(), dst)?;
+        }
+    }
+    fs::remove_file(temp)?;
+    result
+}
+
+
+#[cfg(not(windows))]
 pub fn make_hard_link(src: &Path, dst: &Path) -> io::Result<()> {
     let dst_dir = dst.parent().ok_or_else(|| Error::other("No parent"))?;
     let temp = dst_dir.join(TEMP_HARDLINK_FILE);
